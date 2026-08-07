@@ -1,69 +1,73 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useEffect } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+import Hero from '@/components/sections/Hero'
+import BrandStatement from '@/components/sections/BrandStatement'
+import Services from '@/components/sections/Services'
+import CreatorNetwork from '@/components/sections/CreatorNetwork'
+import Campaigns from '@/components/sections/Campaigns'
+import Process from '@/components/sections/Process'
+import WhyRAS from '@/components/sections/WhyRAS'
+import About from '@/components/sections/About'
+import Contact from '@/components/sections/Contact'
+import Footer from '@/components/sections/Footer'
+
+gsap.registerPlugin(ScrollTrigger)
+
+export default function HomePage() {
+  useEffect(() => {
+    // Lenis smooth scroll integration with GSAP ScrollTrigger
+    let lenis: { raf: (time: number) => void; destroy: () => void } | null = null
+
+    const initLenis = async () => {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (reducedMotion) return
+
+      const { default: Lenis } = await import('lenis')
+
+      const lenisInstance = new Lenis({
+        duration: 1.2,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+      })
+
+      lenis = lenisInstance
+
+      // Sync Lenis with GSAP ScrollTrigger
+      lenisInstance.on('scroll', ScrollTrigger.update)
+
+      gsap.ticker.add((time) => {
+        lenisInstance.raf(time * 1000)
+      })
+
+      gsap.ticker.lagSmoothing(0)
+    }
+
+    initLenis()
+
+    return () => {
+      if (lenis) {
+        lenis.destroy()
+      }
+      gsap.ticker.remove(() => {})
+    }
+  }, [])
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    <main id="main-content" tabIndex={-1}>
+      <Hero />
+      <BrandStatement />
+      <Services />
+      <CreatorNetwork />
+      <Campaigns />
+      <Process />
+      <WhyRAS />
+      <About />
+      <Contact />
+      <Footer />
+    </main>
+  )
 }
