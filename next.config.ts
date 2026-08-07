@@ -1,14 +1,22 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Allow GLB files to be served from public
-  // No webpack config needed — GLB served as static assets from /public
+  // Static export for Netlify deployment
+  output: 'export',
 
-  // Transpile Three.js and R3F packages for compatibility
+  // Required for next/image with static export
+  images: {
+    unoptimized: true,
+  },
+
+  // Transpile Three.js for compatibility
   transpilePackages: ['three'],
 
-  // Strict mode for better React practices
+  // Strict mode
   reactStrictMode: true,
+
+  // Trailing slash for Netlify static routing
+  trailingSlash: true,
 }
 
 export default nextConfig

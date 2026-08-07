@@ -17,9 +17,9 @@
   --ras-black-mid: #141414;
   --ras-surface: #1A1A1A;
   --ras-surface-mid: #222222;
-  --ras-white: #F5F0EE;
-  --ras-white-dim: rgba(245, 240, 238, 0.6);
-  --ras-white-mute: rgba(245, 240, 238, 0.25);
+  --ras-white: #edebdd;
+  --ras-white-dim: rgba(237, 235, 221, 0.6);
+  --ras-white-mute: rgba(237, 235, 221, 0.25);
 
   /* Typography */
   --font-display: 'Space Grotesk', sans-serif;
@@ -706,7 +706,7 @@ body {
 .service-item:hover .service-arrow {
   background: var(--ras-red);
   border-color: var(--ras-red);
-  color: white;
+  color: var(--ras-white);
   transform: rotate(45deg);
 }
 

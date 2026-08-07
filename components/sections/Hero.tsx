@@ -136,7 +136,7 @@ export default function Hero() {
           minHeight: '100vh',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           paddingTop: 'var(--nav-height)',
         }}
         className="hero-grid"
@@ -212,7 +212,9 @@ export default function Hero() {
           aria-hidden="true"
           style={{
             position: 'relative',
-            height: '100vh',
+            height: 'calc(100vh - var(--nav-height))',
+            /* Shift the model UP so it floats beside the CTA buttons */
+            marginTop: '-8vh',
             opacity: 0,
           }}
         >
