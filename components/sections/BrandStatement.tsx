@@ -15,33 +15,28 @@ export default function BrandStatement() {
   const subRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
+    // The HeroTransition orchestrator drives the scroll-scrubbed reveal of these
+    // elements. We only add a fallback: if this section is already in-viewport
+    // on load (e.g. accessed via direct anchor), reveal without animation.
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reducedMotion) return
+    const section = sectionRef.current
+    if (!section) return
 
-    const lines = [line1Ref.current, line2Ref.current, line3Ref.current, line4Ref.current]
-
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-        toggleActions: 'play none none none',
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Only used as fallback — HeroTransition normally handles this
+            section.classList.add('brand-statement--visible')
+            observer.disconnect()
+          }
+        })
       },
-    })
-
-    tl.fromTo(
-      lines,
-      { y: '105%', opacity: 0 },
-      { y: '0%', opacity: 1, duration: 1.1, ease: 'power4.out', stagger: 0.1 }
-    ).fromTo(
-      subRef.current,
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out' },
-      '-=0.4'
+      { threshold: 0.01 }
     )
+    observer.observe(section)
 
-    return () => {
-      tl.kill()
-    }
+    return () => observer.disconnect()
   }, [])
 
   return (
@@ -56,38 +51,44 @@ export default function BrandStatement() {
       <h2 className="brand-statement-title" aria-label="We connect brands and creators">
         <span
           ref={line1Ref}
-          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em' }}
+          data-bs-line="1"
+          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
         >
           WE
         </span>
         <span
           ref={line2Ref}
-          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em' }}
+          data-bs-line="2"
+          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
         >
           CONNECT
         </span>
         <span
           ref={line3Ref}
+          data-bs-line="3"
           style={{
             display: 'block',
             overflow: 'hidden',
             paddingBottom: '0.05em',
             WebkitTextStroke: '1px rgba(245,240,238,0.2)',
             color: 'transparent',
+            opacity: 0,
+            transform: 'translateY(80px)',
           }}
         >
           BRANDS
         </span>
         <span
           ref={line4Ref}
-          style={{ display: 'flex', alignItems: 'baseline', gap: '0.2em', overflow: 'hidden', paddingBottom: '0.05em' }}
+          data-bs-line="4"
+          style={{ display: 'flex', alignItems: 'baseline', gap: '0.2em', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
         >
           <span className="accent">×</span>
           <span>CREATORS</span>
         </span>
       </h2>
 
-      <p ref={subRef} className="brand-statement-sub">
+      <p ref={subRef} className="brand-statement-sub" style={{ opacity: 0, transform: 'translateY(30px)' }}>
         Turning products into conversations, campaigns into communities, and attention into measurable impact.
       </p>
 

@@ -12,12 +12,15 @@ interface LogoMeshProps {
   mouseX: React.MutableRefObject<number>
   mouseY: React.MutableRefObject<number>
   scrollProgress: React.MutableRefObject<number>
+  transitionProgress: React.MutableRefObject<number>
+  introProgress: React.MutableRefObject<number>
   scale?: number
 }
 
-function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) {
+function LogoMesh({ mouseX, mouseY, scrollProgress, transitionProgress, introProgress, scale = 8 }: LogoMeshProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const { scene } = useGLTF('/RAS.glb')
+  const glbReadyDispatched = useRef(false)
 
   // Clone scene to avoid shared state issues
   const clonedScene = useRef<THREE.Object3D | null>(null)
@@ -49,6 +52,14 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) 
           mesh.receiveShadow = true
         }
       })
+
+      // Signal that GLB is ready — Loader listens for this
+      if (!glbReadyDispatched.current) {
+        glbReadyDispatched.current = true
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ras:glb-ready'))
+        }
+      }
     }
 
     if (groupRef.current && clonedScene.current) {
@@ -62,10 +73,20 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) 
     }
   }, [scene])
 
-  // Idle float + rotation + mouse parallax
+  // ── Animation state ───────────────────────────────────────────────────────
   const idleAngle = useRef(0)
   const floatOffset = useRef(0)
+
+  // Smoothed rotation
   const currentRot = useRef({ x: 0, y: 0 })
+  // Smoothed XY positional drift
+  const currentPos = useRef({ x: 0, y: 0 })
+
+  // Idle-return: track when cursor last moved
+  const lastMouseX = useRef(0)
+  const lastMouseY = useRef(0)
+  const idleFrames = useRef(0)
+  const IDLE_FRAMES_THRESHOLD = 90 // ~1.5s at 60fps
 
   useFrame((state, delta) => {
     if (!groupRef.current) return
@@ -74,15 +95,39 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) 
     idleAngle.current += delta * 0.3
     floatOffset.current += delta * 0.5
 
-    // Target rotation from mouse
-    const targetRotY = mouseX.current * 0.35
-    const targetRotX = mouseY.current * -0.2
+    // Detect cursor movement / idleness
+    const mx = mouseX.current
+    const my = mouseY.current
+    const moved = Math.abs(mx - lastMouseX.current) > 0.001 || Math.abs(my - lastMouseY.current) > 0.001
+    if (moved) {
+      idleFrames.current = 0
+      lastMouseX.current = mx
+      lastMouseY.current = my
+    } else {
+      idleFrames.current++
+    }
 
-    // Smooth interpolation
-    currentRot.current.x += (targetRotX - currentRot.current.x) * 0.04
-    currentRot.current.y += (targetRotY - currentRot.current.y) * 0.04
+    const isIdle = idleFrames.current > IDLE_FRAMES_THRESHOLD
+    // Blend factor: 0 = active, 1 = full idle return
+    const idleBlend = isIdle ? Math.min(1, (idleFrames.current - IDLE_FRAMES_THRESHOLD) / 120) : 0
 
-    // Idle slow Y rotation
+    // Target rotation from mouse (scaled down during idle return)
+    const activeScale = 1 - idleBlend
+    const targetRotY = mx * 0.35 * activeScale
+    const targetRotX = my * -0.25 * activeScale
+
+    // Target XY position from mouse — strong spatial follow (±0.35 / ±0.2 units)
+    // The logo should clearly chase the cursor in 3D space with weight.
+    const targetPosX = mx * 0.35 * activeScale
+    const targetPosY = my * -0.2 * activeScale
+
+    // Smooth interpolation with damping (premium inertia — object has weight)
+    currentRot.current.x += (targetRotX - currentRot.current.x) * 0.05
+    currentRot.current.y += (targetRotY - currentRot.current.y) * 0.05
+    currentPos.current.x += (targetPosX - currentPos.current.x) * 0.035
+    currentPos.current.y += (targetPosY - currentPos.current.y) * 0.035
+
+    // Idle slow Y sway
     const idleRotY = Math.sin(idleAngle.current * 0.4) * 0.1
 
     // Floating movement
@@ -93,10 +138,21 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) 
     const scrollRotX = sp * 0.4
     const scrollZ = sp * -0.5
 
+    // Cinematic transition: deeper Z pull + scale reduction
+    const tp = transitionProgress.current
+    const transZ = tp * -2.0
+    const transScaleMult = 1 - tp * 0.35
+
+    // Intro zoom: during loader→hero, logo starts slightly larger and zooms out
+    const ip = introProgress.current
+    const introScaleVal = 1 + (1 - ip) * 0.15 // 1.15 → 1.0
+
     groupRef.current.rotation.x = currentRot.current.x + scrollRotX
     groupRef.current.rotation.y = currentRot.current.y + idleRotY
-    groupRef.current.position.y = floatY + sp * -0.15
-    groupRef.current.position.z = scrollZ
+    groupRef.current.position.x = currentPos.current.x
+    groupRef.current.position.y = floatY + sp * -0.15 + currentPos.current.y
+    groupRef.current.position.z = scrollZ + transZ
+    groupRef.current.scale.setScalar(scale * transScaleMult * introScaleVal)
   })
 
   return (
@@ -109,12 +165,24 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, scale = 8 }: LogoMeshProps) 
   )
 }
 
+// ── Orbiting rim light ─────────────────────────────────────────────────────
 function Lighting() {
-  const lightRef = useRef<THREE.PointLight>(null!)
+  const keyLightRef = useRef<THREE.PointLight>(null!)
+  const rimLightRef = useRef<THREE.PointLight>(null!)
 
   useFrame(({ clock }) => {
-    if (lightRef.current) {
-      lightRef.current.intensity = 1.5 + Math.sin(clock.elapsedTime * 0.8) * 0.3
+    const t = clock.elapsedTime
+
+    // Key light breathes
+    if (keyLightRef.current) {
+      keyLightRef.current.intensity = 1.5 + Math.sin(t * 0.8) * 0.3
+    }
+
+    // Rim light slowly orbits around the Y axis for living reflections
+    if (rimLightRef.current) {
+      const angle = t * 0.18
+      rimLightRef.current.position.set(Math.cos(angle) * 4, 1.5, Math.sin(angle) * 3)
+      rimLightRef.current.intensity = 0.7 + Math.sin(t * 0.5) * 0.2
     }
   })
 
@@ -132,7 +200,7 @@ function Lighting() {
 
       {/* Red accent fill from front-left */}
       <pointLight
-        ref={lightRef}
+        ref={keyLightRef}
         position={[-3, 2, 4]}
         intensity={1.5}
         color="#C1272D"
@@ -147,7 +215,16 @@ function Lighting() {
         distance={10}
       />
 
-      {/* Subtle blue-ish cool fill from below — depth */}
+      {/* Orbiting rim — creates life in the metallic reflections */}
+      <pointLight
+        ref={rimLightRef}
+        position={[4, 1.5, 3]}
+        intensity={0.9}
+        color="#C1272D"
+        distance={12}
+      />
+
+      {/* Subtle cool fill from below — depth */}
       <pointLight
         position={[0, -5, 2]}
         intensity={0.4}
@@ -168,25 +245,6 @@ function SceneSetup() {
   return null
 }
 
-// ─── Loading Fallback ──────────────────────────────────────────────────────
-function LogoFallback() {
-  return (
-    <div className="flex items-center justify-center w-full h-full">
-      <div
-        style={{
-          width: 60,
-          height: 60,
-          border: '1px solid rgba(193,39,45,0.3)',
-          borderTopColor: '#C1272D',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }}
-      />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
-}
-
 // ─── Public Component ──────────────────────────────────────────────────────
 interface RASLogo3DProps {
   className?: string
@@ -195,6 +253,10 @@ interface RASLogo3DProps {
   mouseX: React.MutableRefObject<number>
   mouseY: React.MutableRefObject<number>
   scrollProgress: React.MutableRefObject<number>
+  /** Optional: only needed by Hero. Absent ⇒ zero (no transition effect). */
+  transitionProgress?: React.MutableRefObject<number>
+  /** 0→1 during loader-to-hero intro. Absent ⇒ 1 (intro complete, no zoom). */
+  introProgress?: React.MutableRefObject<number>
   isMobile?: boolean
 }
 
@@ -205,8 +267,15 @@ export default function RASLogo3D({
   mouseX,
   mouseY,
   scrollProgress,
+  transitionProgress,
+  introProgress,
   isMobile = false,
 }: RASLogo3DProps) {
+  // Fallback refs for optional props
+  const zeroRef = useRef(0)
+  const oneRef = useRef(1)
+  const resolvedTP = transitionProgress ?? zeroRef
+  const resolvedIP = introProgress ?? oneRef
   const mobileScale = isMobile ? scale * 0.65 : scale
 
   return (
@@ -229,6 +298,8 @@ export default function RASLogo3D({
             mouseX={mouseX}
             mouseY={mouseY}
             scrollProgress={scrollProgress}
+            transitionProgress={resolvedTP}
+            introProgress={resolvedIP}
             scale={mobileScale}
           />
           <Environment preset="city" />

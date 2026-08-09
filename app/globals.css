@@ -607,6 +607,32 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   HERO TRANSITION (inline styles in Hero.tsx handle zoom + noir)
+   ─────────────────────────────────────────────────────────────── */
+
+/*
+ * BrandStatement fallback: applied by IntersectionObserver when the
+ * section enters view without the cinematic transition (direct anchor,
+ * reduced-motion, or JS-disabled scenarios).
+ */
+.brand-statement--visible [data-bs-line],
+.brand-statement--visible .brand-statement-sub {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+/* Reduced-motion: immediately reveal BrandStatement content */
+@media (prefers-reduced-motion: reduce) {
+  [data-bs-line],
+  .brand-statement-sub {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
    BRAND STATEMENT
    ─────────────────────────────────────────────────────────────── */
 
@@ -1254,4 +1280,106 @@ body {
 ::selection {
   background: var(--ras-red);
   color: var(--ras-white);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CINEMATIC LOADER
+   ─────────────────────────────────────────────────────────────── */
+
+.ras-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;           /* above everything except native cursor */
+  background: var(--ras-black);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  will-change: opacity;
+}
+
+/* Subtle noise grain for depth */
+.ras-loader-grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Radial cherry-red glow behind logo */
+.ras-loader-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(ellipse at center, rgba(193, 39, 45, 0.14) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+  animation: loaderGlowPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes loaderGlowPulse {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.12); }
+}
+
+/* Logo container */
+.ras-loader-logo {
+  position: relative;
+  z-index: 2;
+  width: clamp(120px, 18vw, 200px);
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 40px rgba(193, 39, 45, 0.25));
+}
+
+/* Tagline beneath logo */
+.ras-loader-tagline {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ras-white-dim);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Progress bar — pinned to bottom */
+.ras-loader-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(193, 39, 45, 0.12);
+  z-index: 3;
+  overflow: hidden;
+}
+
+.ras-loader-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ras-maroon) 0%, var(--ras-red) 60%, var(--ras-red-light) 100%);
+  will-change: width;
+  box-shadow: 0 0 8px rgba(193, 39, 45, 0.6);
+  border-radius: 0 1px 1px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ras-loader,
+  .ras-loader-logo,
+  .ras-loader-tagline,
+  .ras-loader-progress-fill,
+  .ras-loader-glow {
+    animation: none !important;
+    transition: none !important;
+  }
 }
