@@ -17,6 +17,8 @@ interface LogoMeshProps {
   scale?: number
 }
 
+type ReadyWindow = Window & { __rasGlbReady?: boolean }
+
 function LogoMesh({ mouseX, mouseY, scrollProgress, transitionProgress, introProgress, scale = 8 }: LogoMeshProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const { scene } = useGLTF('/RAS.glb')
@@ -26,6 +28,8 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, transitionProgress, introPro
   const clonedScene = useRef<THREE.Object3D | null>(null)
 
   useEffect(() => {
+    const group = groupRef.current
+
     if (!clonedScene.current) {
       clonedScene.current = scene.clone(true)
 
@@ -57,18 +61,19 @@ function LogoMesh({ mouseX, mouseY, scrollProgress, transitionProgress, introPro
       if (!glbReadyDispatched.current) {
         glbReadyDispatched.current = true
         if (typeof window !== 'undefined') {
+          ;(window as ReadyWindow).__rasGlbReady = true
           window.dispatchEvent(new CustomEvent('ras:glb-ready'))
         }
       }
     }
 
-    if (groupRef.current && clonedScene.current) {
-      groupRef.current.add(clonedScene.current)
+    if (group && clonedScene.current) {
+      group.add(clonedScene.current)
     }
 
     return () => {
-      if (groupRef.current && clonedScene.current) {
-        groupRef.current.remove(clonedScene.current)
+      if (group && clonedScene.current) {
+        group.remove(clonedScene.current)
       }
     }
   }, [scene])

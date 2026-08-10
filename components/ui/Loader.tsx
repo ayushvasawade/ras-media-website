@@ -1,18 +1,6 @@
 'use client'
 
-/**
- * Loader.tsx — RAS Media Cinematic Intro Loader
- *
- * Sequence:
- *  Phase 1 (0 → ~0.8s)  RAS SVG logo fades + scales in from slightly below-center
- *  Phase 2 (0.8 → 1.2s) Subtle pulse + tagline fades in
- *  Phase 3 (ongoing)     Progress bar fills as fonts + GLB load; minimum 1.2s display
- *  Phase 4 (on ready)    Exit: logo scales up + blurs out, overlay opacity → 0, onComplete()
- *
- * Respects prefers-reduced-motion (instant reveal, no animation).
- */
-
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import gsap from 'gsap'
 
@@ -20,175 +8,165 @@ interface LoaderProps {
   onComplete: () => void
 }
 
-const MIN_DISPLAY_MS = 1200
+type ReadyWindow = Window & {
+  __rasGlbReady?: boolean
+  __rasHero13Ready?: boolean
+}
+
+const MIN_DISPLAY_MS = 500
 
 export default function Loader({ onComplete }: LoaderProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
-  const logoWrapRef = useRef<HTMLDivElement>(null)
-  const taglineRef = useRef<HTMLDivElement>(null)
-  const barFillRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
+  const logoRef = useRef<HTMLDivElement>(null)
+  const progressFillRef = useRef<HTMLDivElement>(null)
+  const progressLabelRef = useRef<HTMLSpanElement>(null)
+
+  const [readyMap, setReadyMap] = useState({
+    fonts: false,
+    logoAsset: false,
+    hero3d: false,
+    heroBackground: false,
+  })
+
   const exitTriggered = useRef(false)
+  const startedAt = useRef(0)
+
+  const progress = useMemo(() => {
+    const done = Object.values(readyMap).filter(Boolean).length
+    return Math.round((done / Object.keys(readyMap).length) * 100)
+  }, [readyMap])
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const overlay = overlayRef.current
-    const logoWrap = logoWrapRef.current
-    const tagline = taglineRef.current
-
-    if (!overlay || !logoWrap || !tagline) return
-
-    // ── Reduced-motion: instant pass-through ───────────────────────────
     if (reducedMotion) {
       onComplete()
       return
     }
 
-    // ── Track load readiness ───────────────────────────────────────────
-    let fontsReady = false
-    let glbReady = false
-    const startTime = Date.now()
+    const readyWindow = window as ReadyWindow
+    startedAt.current = performance.now()
 
-    const tryExit = () => {
-      if (!fontsReady || !glbReady || exitTriggered.current) return
-      const elapsed = Date.now() - startTime
-      const remaining = Math.max(0, MIN_DISPLAY_MS - elapsed)
-      setTimeout(runExit, remaining)
+    const markReady = (key: keyof typeof readyMap) => {
+      setReadyMap((previous) => (previous[key] ? previous : { ...previous, [key]: true }))
     }
 
-    // ── Fonts ──────────────────────────────────────────────────────────
-    document.fonts.ready.then(() => {
-      fontsReady = true
-      setProgress((p) => Math.max(p, 50))
-      tryExit()
-    })
+    const onGlbReady = () => markReady('hero3d')
+    const onHeroBgReady = () => markReady('heroBackground')
 
-    // ── GLB ready (dispatched by RASLogo3D after clone + material setup) ─
-    const onGlbReady = () => {
-      glbReady = true
-      setProgress(100)
-      tryExit()
-    }
-    window.addEventListener('ras:glb-ready', onGlbReady, { once: true })
+    if (readyWindow.__rasGlbReady) markReady('hero3d')
+    if (readyWindow.__rasHero13Ready) markReady('heroBackground')
 
-    // ── Safety: if GLB event never fires (SSR/no-JS), exit after 4s ───
-    const safetyTimer = setTimeout(() => {
-      glbReady = true
-      setProgress(100)
-      tryExit()
-    }, 4000)
+    document.fonts.ready.then(() => markReady('fonts'))
 
-    // ── Entry animation ────────────────────────────────────────────────
-    const entryTl = gsap.timeline()
+    const logoProbe = new window.Image()
+    logoProbe.decoding = 'async'
+    logoProbe.src = '/ras-logo.svg'
+    logoProbe.onload = () => markReady('logoAsset')
+    logoProbe.onerror = () => markReady('logoAsset')
 
-    // Logo reveal
-    entryTl
-      .fromTo(
-        logoWrap,
-        { opacity: 0, scale: 0.78, y: 18 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.9, ease: 'power3.out' }
-      )
-      // Subtle pulse
-      .to(logoWrap, { scale: 1.03, duration: 0.35, ease: 'power1.inOut', yoyo: true, repeat: 1 }, '+=0.1')
-      // Tagline
-      .fromTo(
-        tagline,
-        { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' },
-        '-=0.3'
-      )
-
-    // ── Progress bar: animate to 45% quickly, then wait for actual loads ─
-    gsap.to(barFillRef.current, { width: '45%', duration: 0.9, ease: 'power2.out' })
-
-    // ── Exit animation ─────────────────────────────────────────────────
-    // SVG stays centered — no lateral movement. The overlay fades to
-    // reveal the 3D logo already positioned behind it. Brief crossfade
-    // window where both SVG and 3D are partially visible creates the
-    // "flat logo gains depth" illusion.
-    function runExit() {
-      if (exitTriggered.current) return
-      exitTriggered.current = true
-
-      // Fill bar to 100%
-      gsap.to(barFillRef.current, { width: '100%', duration: 0.4, ease: 'power2.out' })
-
-      const exitTl = gsap.timeline({
-        delay: 0.15,
-        onComplete: () => {
-          onComplete()
-        },
-      })
-
-      exitTl
-        // SVG: scale up slightly (gaining depth illusion) + dissolve
-        .to(logoWrap, {
-          scale: 1.12,
-          opacity: 0,
-          duration: 0.7,
-          ease: 'power2.inOut',
-        })
-        // Tagline + progress bar dissolve alongside
-        .to(tagline, { opacity: 0, duration: 0.3, ease: 'power2.in' }, '<')
-        .to(barFillRef.current, { opacity: 0, duration: 0.3 }, '<')
-        // Grain fades
-        .to('.ras-loader-grain', { opacity: 0, duration: 0.4 }, '<')
-        .to('.ras-loader-glow', { opacity: 0, duration: 0.4 }, '<')
-        // Overlay background fades — starts shortly after SVG so the 3D
-        // logo behind the overlay becomes visible during the crossfade
-        .to(
-          overlay,
-          { opacity: 0, duration: 0.7, ease: 'power2.inOut' },
-          0.15   // starts 0.15s into the timeline (SVG already dimming)
-        )
-    }
+    window.addEventListener('ras:glb-ready', onGlbReady)
+    window.addEventListener('ras:hero13-ready', onHeroBgReady)
 
     return () => {
-      clearTimeout(safetyTimer)
       window.removeEventListener('ras:glb-ready', onGlbReady)
-      entryTl.kill()
+      window.removeEventListener('ras:hero13-ready', onHeroBgReady)
     }
   }, [onComplete])
 
-  // Sync progress bar width with state
   useEffect(() => {
-    if (progress > 45 && barFillRef.current) {
-      gsap.to(barFillRef.current, {
+    if (progressFillRef.current) {
+      gsap.to(progressFillRef.current, {
         width: `${progress}%`,
-        duration: 0.5,
+        duration: 0.4,
         ease: 'power2.out',
       })
     }
-  }, [progress])
+
+    if (progressLabelRef.current) {
+      progressLabelRef.current.textContent = `${progress}%`
+    }
+
+    if (progress < 100 || exitTriggered.current) return
+
+    const waitMs = Math.max(0, MIN_DISPLAY_MS - (performance.now() - startedAt.current))
+    const timer = window.setTimeout(() => {
+      if (exitTriggered.current) return
+      exitTriggered.current = true
+
+      const exitTl = gsap.timeline({ onComplete })
+      exitTl.to(logoRef.current, {
+        opacity: 0,
+        y: -10,
+        scale: 1.04,
+        duration: 0.5,
+        ease: 'power2.inOut',
+      })
+      exitTl.to('.ras-loader-progress-track, .ras-loader-progress-meta', {
+        opacity: 0,
+        duration: 0.25,
+      }, '<')
+      exitTl.to(overlayRef.current, { opacity: 0, duration: 0.6, ease: 'power2.inOut' }, '-=0.1')
+    }, waitMs)
+
+    return () => window.clearTimeout(timer)
+  }, [progress, onComplete])
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion || !logoRef.current) return
+
+    const target = { x: 0, y: 0 }
+    const current = { x: 0, y: 0 }
+
+    const onPointerMove = (event: PointerEvent) => {
+      target.x = (event.clientX / window.innerWidth - 0.5) * 2
+      target.y = (event.clientY / window.innerHeight - 0.5) * 2
+    }
+
+    const tick = () => {
+      current.x += (target.x - current.x) * 0.08
+      current.y += (target.y - current.y) * 0.08
+
+      gsap.set(logoRef.current, {
+        x: current.x * 10,
+        y: current.y * 8,
+        rotateY: current.x * 8,
+        rotateX: -current.y * 7,
+      })
+    }
+
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    gsap.ticker.add(tick)
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      gsap.ticker.remove(tick)
+    }
+  }, [])
 
   return (
     <div ref={overlayRef} className="ras-loader" aria-hidden="true" role="presentation">
-      {/* Ambient noise grain overlay */}
-      <div className="ras-loader-grain" />
-
-      {/* Radial glow behind logo */}
+      <div className="ras-loader-noise" />
       <div className="ras-loader-glow" />
 
-      {/* Logo */}
-      <div ref={logoWrapRef} className="ras-loader-logo">
+      <div ref={logoRef} className="ras-loader-logo" style={{ transformStyle: 'preserve-3d' }}>
         <Image
           src="/ras-logo.svg"
           alt="RAS Media"
-          width={180}
-          height={180}
+          width={192}
+          height={192}
           priority
           style={{ width: '100%', height: 'auto', display: 'block' }}
         />
       </div>
 
-      {/* Tagline */}
-      <div ref={taglineRef} className="ras-loader-tagline">
-        Influencer Marketing Agency
+      <div className="ras-loader-progress-meta" aria-hidden="true">
+        <span>Loading</span>
+        <span ref={progressLabelRef}>0%</span>
       </div>
 
-      {/* Progress bar */}
       <div className="ras-loader-progress-track">
-        <div ref={barFillRef} className="ras-loader-progress-fill" />
+        <div ref={progressFillRef} className="ras-loader-progress-fill" />
       </div>
     </div>
   )
