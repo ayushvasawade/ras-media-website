@@ -1,109 +1,234 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-gsap.registerPlugin(ScrollTrigger)
 
 export default function BrandStatement() {
   const sectionRef = useRef<HTMLElement>(null)
-  const line1Ref = useRef<HTMLSpanElement>(null)
-  const line2Ref = useRef<HTMLSpanElement>(null)
-  const line3Ref = useRef<HTMLSpanElement>(null)
-  const line4Ref = useRef<HTMLSpanElement>(null)
-  const subRef = useRef<HTMLParagraphElement>(null)
+  const floatingLogoRef = useRef<HTMLDivElement>(null)
+  const contentWrapperRef = useRef<HTMLDivElement>(null)
 
+  const [isRevealed, setIsRevealed] = useState(false)
+
+  /* ── Reveal Observer ─────────────────────────────────────────── */
   useEffect(() => {
-    // The HeroTransition orchestrator drives the scroll-scrubbed reveal of these
-    // elements. We only add a fallback: if this section is already in-viewport
-    // on load (e.g. accessed via direct anchor), reveal without animation.
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const section = sectionRef.current
     if (!section) return
-
+ 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Only used as fallback — HeroTransition normally handles this
-            section.classList.add('brand-statement--visible')
+            setIsRevealed(true)
             observer.disconnect()
           }
         })
       },
-      { threshold: 0.01 }
+      { threshold: 0.15 }
     )
     observer.observe(section)
 
     return () => observer.disconnect()
   }, [])
 
+  /* ── GSAP Text Entrance Animation Sequence ─────────────────────── */
+  useEffect(() => {
+    if (!isRevealed || !contentWrapperRef.current) return
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ delay: 0.2 })
+
+      // 1. Eyebrow label fade & slide
+      tl.fromTo(
+        '.sec2-eyebrow',
+        { opacity: 0, y: 24, filter: 'blur(4px)' },
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out' }
+      )
+
+      // 2. Staggered Headline Lines
+      tl.fromTo(
+        '.sec2-headline-line',
+        { opacity: 0, y: 44, rotateX: -15, filter: 'blur(6px)' },
+        {
+          opacity: 1,
+          y: 0,
+          rotateX: 0,
+          filter: 'blur(0px)',
+          duration: 0.9,
+          stagger: 0.12,
+          ease: 'power3.out',
+        },
+        '-=0.4'
+      )
+
+      // 3. Supporting Paragraph
+      tl.fromTo(
+        '.sec2-paragraph',
+        { opacity: 0, y: 28, filter: 'blur(4px)' },
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, ease: 'power3.out' },
+        '-=0.5'
+      )
+
+      // 4. Staggered Category Labels
+      tl.fromTo(
+        '.sec2-category-tag',
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: 'power2.out' },
+        '-=0.4'
+      )
+    }, contentWrapperRef)
+
+    return () => ctx.revert()
+  }, [isRevealed])
+
+  /* ── Full Section Dynamic Cursor Tracking for Interactive Logo ──── */
+  useEffect(() => {
+    const section = sectionRef.current
+    const logoEl = floatingLogoRef.current
+    if (!section || !logoEl || !isRevealed) return
+
+    const isMobile = window.innerWidth < 768
+
+    const sectionRect = section.getBoundingClientRect()
+
+    // Initial position: large & dominant on the right side
+    const initialX = isMobile ? sectionRect.width * 0.5 - 75 : sectionRect.width * 0.7 - 110
+    const initialY = isMobile ? sectionRect.height * 0.6 - 75 : sectionRect.height * 0.5 - 110
+
+    gsap.set(logoEl, {
+      x: initialX,
+      y: initialY,
+      scale: isMobile ? 1.0 : 1.85,
+      opacity: 1,
+    })
+
+    // GSAP quickTo interpolators for smooth weight & damping
+    const xTo = gsap.quickTo(logoEl, 'x', { duration: 0.85, ease: 'power3.out' })
+    const yTo = gsap.quickTo(logoEl, 'y', { duration: 0.85, ease: 'power3.out' })
+
+    let isFollowActive = false
+
+    // Sequence 1: Shrink from large logo to smaller floating logo
+    const shrinkTimer = setTimeout(() => {
+      const targetScale = isMobile ? 0.75 : 0.85
+      gsap.to(logoEl, { scale: targetScale, duration: 1.2, ease: 'power2.inOut', overwrite: 'auto' })
+      isFollowActive = true
+
+      // On mobile: trigger subtle ambient floating animation (no cursor tracking)
+      if (isMobile) {
+        gsap.to(logoEl, {
+          y: '+=16',
+          duration: 2.5,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        })
+      }
+    }, 450)
+
+    // Sequence 2: Full Section Dynamic Bounding Box Cursor Follower
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isFollowActive || isMobile) return
+
+      const currentSection = sectionRef.current
+      const currentLogo = floatingLogoRef.current
+      if (!currentSection || !currentLogo) return
+
+      const rect = currentSection.getBoundingClientRect()
+      const logoRect = currentLogo.getBoundingClientRect()
+
+      // Calculate cursor position relative to Section 2
+      const cursorX = e.clientX - rect.left
+      const cursorY = e.clientY - rect.top
+
+      // Calculate dynamic max boundaries based on actual section & logo dimensions
+      const maxX = rect.width - logoRect.width
+      const maxY = rect.height - logoRect.height
+
+      // Target position offset slightly (+24px)
+      const targetRawX = cursorX + 24
+      const targetRawY = cursorY + 24
+
+      // Constrain strictly within visible Section 2 boundaries
+      const clampedX = Math.max(10, Math.min(maxX - 10, targetRawX))
+      const clampedY = Math.max(10, Math.min(maxY - 10, targetRawY))
+
+      xTo(clampedX)
+      yTo(clampedY)
+    }
+
+    if (!isMobile) {
+      window.addEventListener('pointermove', handlePointerMove)
+    }
+
+    return () => {
+      clearTimeout(shrinkTimer)
+      if (!isMobile) {
+        window.removeEventListener('pointermove', handlePointerMove)
+      }
+    }
+  }, [isRevealed])
+
+
+
   return (
     <section
       ref={sectionRef}
-      className="brand-statement"
       id="brand-statement"
-      aria-label="Brand statement"
+      aria-label="Section 2 — We Make Brands Impossible To Ignore"
+      className="section-two hidden opacity-0 pointer-events-none"
     >
-      <div className="section-label" aria-hidden="true">Our Purpose</div>
+      {/* 1. Independent Interactive Logo Layer */}
+      <div className="section-two__logo-layer">
+        <div ref={floatingLogoRef} className="section-two__logo">
+          <Image
+            src="/ras-logo.svg"
+            alt="RAS Media SVG Logo"
+            width={220}
+            height={220}
+            priority
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
 
-      <h2 className="brand-statement-title" aria-label="We connect brands and creators">
-        <span
-          ref={line1Ref}
-          data-bs-line="1"
-          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
-        >
-          WE
-        </span>
-        <span
-          ref={line2Ref}
-          data-bs-line="2"
-          style={{ display: 'block', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
-        >
-          CONNECT
-        </span>
-        <span
-          ref={line3Ref}
-          data-bs-line="3"
-          style={{
-            display: 'block',
-            overflow: 'hidden',
-            paddingBottom: '0.05em',
-            WebkitTextStroke: '1px rgba(245,240,238,0.2)',
-            color: 'transparent',
-            opacity: 0,
-            transform: 'translateY(80px)',
-          }}
-        >
-          BRANDS
-        </span>
-        <span
-          ref={line4Ref}
-          data-bs-line="4"
-          style={{ display: 'flex', alignItems: 'baseline', gap: '0.2em', overflow: 'hidden', paddingBottom: '0.05em', opacity: 0, transform: 'translateY(80px)' }}
-        >
-          <span className="accent">×</span>
-          <span>CREATORS</span>
-        </span>
-      </h2>
+      {/* 2. Responsive Content Container (Centered, Normal Document Flow) */}
+      <div className="section-two__container">
+        <div ref={contentWrapperRef} className="section-two__content">
+          
+          {/* Eyebrow Label */}
+          <span className="eyebrow sec2-eyebrow">
+            <span className="eyebrow-line" />
+            01 / WHAT WE DO
+          </span>
 
-      <p ref={subRef} className="brand-statement-sub" style={{ opacity: 0, transform: 'translateY(30px)' }}>
-        Turning products into conversations, campaigns into communities, and attention into measurable impact.
-      </p>
+          {/* Headline */}
+          <h2>
+            <span className="sec2-headline-line block">WE MAKE</span>
+            <span className="sec2-headline-line block">BRANDS</span>
+            <span className="sec2-headline-line block highlight">IMPOSSIBLE</span>
+            <span className="sec2-headline-line block">TO IGNORE.</span>
+          </h2>
 
-      {/* Decorative red line */}
-      <div
-        style={{
-          position: 'absolute',
-          right: 'var(--section-pad-x)',
-          bottom: '6rem',
-          width: '1px',
-          height: '120px',
-          background: 'linear-gradient(to bottom, var(--ras-red), transparent)',
-        }}
-        aria-hidden="true"
-      />
+          {/* Supporting Paragraph */}
+          <p className="sec2-paragraph">
+            We connect ambitious brands with the right creators, turning attention into influence and influence into impact.
+          </p>
+
+          {/* Categories */}
+          <div className="categories">
+            <span className="sec2-category-tag">BRANDS</span>
+            <span className="sec2-category-tag dash">—</span>
+            <span className="sec2-category-tag">CREATORS</span>
+            <span className="sec2-category-tag dash">—</span>
+            <span className="sec2-category-tag">CULTURE</span>
+            <span className="sec2-category-tag dash">—</span>
+            <span className="sec2-category-tag">INFLUENCE</span>
+          </div>
+
+        </div>
+      </div>
     </section>
   )
 }

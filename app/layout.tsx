@@ -57,7 +57,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#080808" />
         <link rel="icon" href="/ras-logo.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/ras-logo.png" />
-        <link rel="preload" href="/RAS.glb" as="fetch" crossOrigin="anonymous" />
       </head>
       <body>
         {/* Skip to main content for accessibility */}

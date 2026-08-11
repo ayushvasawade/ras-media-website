@@ -9,33 +9,35 @@ interface LoaderProps {
 }
 
 type ReadyWindow = Window & {
-  __rasGlbReady?: boolean
   __rasHero13Ready?: boolean
 }
 
-const MIN_DISPLAY_MS = 500
+const MIN_DISPLAY_MS = 800
 
 export default function Loader({ onComplete }: LoaderProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const capsuleRef = useRef<HTMLDivElement>(null)
   const logoRef = useRef<HTMLDivElement>(null)
-  const progressFillRef = useRef<HTMLDivElement>(null)
-  const progressLabelRef = useRef<HTMLSpanElement>(null)
+  const fillRef = useRef<HTMLDivElement>(null)
+  const percentRef = useRef<HTMLSpanElement>(null)
+  const taglineRef = useRef<HTMLSpanElement>(null)
 
   const [readyMap, setReadyMap] = useState({
     fonts: false,
     logoAsset: false,
-    hero3d: false,
     heroBackground: false,
   })
 
   const exitTriggered = useRef(false)
   const startedAt = useRef(0)
+  const displayProgress = useRef({ value: 0 })
 
   const progress = useMemo(() => {
     const done = Object.values(readyMap).filter(Boolean).length
     return Math.round((done / Object.keys(readyMap).length) * 100)
   }, [readyMap])
 
+  /* ── Asset readiness tracking ────────────────────────────────── */
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reducedMotion) {
@@ -50,10 +52,8 @@ export default function Loader({ onComplete }: LoaderProps) {
       setReadyMap((previous) => (previous[key] ? previous : { ...previous, [key]: true }))
     }
 
-    const onGlbReady = () => markReady('hero3d')
     const onHeroBgReady = () => markReady('heroBackground')
 
-    if (readyWindow.__rasGlbReady) markReady('hero3d')
     if (readyWindow.__rasHero13Ready) markReady('heroBackground')
 
     document.fonts.ready.then(() => markReady('fonts'))
@@ -64,28 +64,86 @@ export default function Loader({ onComplete }: LoaderProps) {
     logoProbe.onload = () => markReady('logoAsset')
     logoProbe.onerror = () => markReady('logoAsset')
 
-    window.addEventListener('ras:glb-ready', onGlbReady)
     window.addEventListener('ras:hero13-ready', onHeroBgReady)
 
+    // Safety fallback: ensure loader finishes within 1.5s max even if an event is delayed
+    const fallbackTimer = window.setTimeout(() => {
+      setReadyMap({ fonts: true, logoAsset: true, heroBackground: true })
+    }, 1500)
+
     return () => {
-      window.removeEventListener('ras:glb-ready', onGlbReady)
       window.removeEventListener('ras:hero13-ready', onHeroBgReady)
+      window.clearTimeout(fallbackTimer)
     }
   }, [onComplete])
 
+  /* ── Intro animation ─────────────────────────────────────────── */
   useEffect(() => {
-    if (progressFillRef.current) {
-      gsap.to(progressFillRef.current, {
-        width: `${progress}%`,
-        duration: 0.4,
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion) return
+
+    const tl = gsap.timeline()
+
+    tl.fromTo(
+      capsuleRef.current,
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' },
+      0.15
+    )
+    tl.fromTo(
+      taglineRef.current,
+      { opacity: 0, x: -10 },
+      { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out' },
+      0.5
+    )
+    tl.fromTo(
+      logoRef.current,
+      { opacity: 0, scale: 0.7 },
+      { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)' },
+      0.4
+    )
+
+    return () => { tl.kill() }
+  }, [])
+
+  /* ── Progress animation (logo slides + fill + counter) ─────── */
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const duration = reducedMotion ? 0 : 2
+
+    // Smoothly tween the logo position using left %
+    if (logoRef.current) {
+      gsap.to(logoRef.current, {
+        left: `${progress}%`,
+        duration,
         ease: 'power2.out',
+        overwrite: 'auto',
       })
     }
 
-    if (progressLabelRef.current) {
-      progressLabelRef.current.textContent = `${progress}%`
+    // Smoothly tween the fill width
+    if (fillRef.current) {
+      gsap.to(fillRef.current, {
+        width: `${progress}%`,
+        duration,
+        ease: 'power2.out',
+        overwrite: 'auto',
+      })
     }
 
+    // Animate the displayed counter number
+    gsap.to(displayProgress.current, {
+      value: progress,
+      duration,
+      ease: 'power2.out',
+      onUpdate: () => {
+        if (percentRef.current) {
+          percentRef.current.textContent = `${Math.round(displayProgress.current.value)}%`
+        }
+      },
+    })
+
+    /* ── Exit sequence ───────────────────────────────────────── */
     if (progress < 100 || exitTriggered.current) return
 
     const waitMs = Math.max(0, MIN_DISPLAY_MS - (performance.now() - startedAt.current))
@@ -94,79 +152,91 @@ export default function Loader({ onComplete }: LoaderProps) {
       exitTriggered.current = true
 
       const exitTl = gsap.timeline({ onComplete })
-      exitTl.to(logoRef.current, {
-        opacity: 0,
-        y: -10,
-        scale: 1.04,
-        duration: 0.5,
-        ease: 'power2.inOut',
+
+      // Flash the capsule glow
+      exitTl.to('.loader-capsule-glow', {
+        opacity: 0.7,
+        duration: 0.3,
+        ease: 'power2.in',
       })
-      exitTl.to('.ras-loader-progress-track, .ras-loader-progress-meta', {
+
+      // Fade out tagline + percentage
+      exitTl.to('.loader-tagline, .loader-percent', {
         opacity: 0,
         duration: 0.25,
-      }, '<')
-      exitTl.to(overlayRef.current, { opacity: 0, duration: 0.6, ease: 'power2.inOut' }, '-=0.1')
+        ease: 'power2.inOut',
+      }, '<0.1')
+
+      // Scale up logo slightly and fade
+      exitTl.to(logoRef.current, {
+        scale: 1.15,
+        opacity: 0,
+        duration: 0.5,
+        ease: 'power2.inOut',
+      }, '-=0.15')
+
+      // Collapse capsule
+      exitTl.to(capsuleRef.current, {
+        scaleX: 0,
+        opacity: 0,
+        transformOrigin: 'left center',
+        duration: 0.5,
+        ease: 'power3.inOut',
+      }, '-=0.3')
+
+      // Final overlay fade
+      exitTl.to(overlayRef.current, {
+        opacity: 0,
+        duration: 0.6,
+        ease: 'power2.inOut',
+      }, '-=0.2')
     }, waitMs)
 
     return () => window.clearTimeout(timer)
   }, [progress, onComplete])
 
-  useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reducedMotion || !logoRef.current) return
-
-    const target = { x: 0, y: 0 }
-    const current = { x: 0, y: 0 }
-
-    const onPointerMove = (event: PointerEvent) => {
-      target.x = (event.clientX / window.innerWidth - 0.5) * 2
-      target.y = (event.clientY / window.innerHeight - 0.5) * 2
-    }
-
-    const tick = () => {
-      current.x += (target.x - current.x) * 0.08
-      current.y += (target.y - current.y) * 0.08
-
-      gsap.set(logoRef.current, {
-        x: current.x * 10,
-        y: current.y * 8,
-        rotateY: current.x * 8,
-        rotateX: -current.y * 7,
-      })
-    }
-
-    window.addEventListener('pointermove', onPointerMove, { passive: true })
-    gsap.ticker.add(tick)
-
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove)
-      gsap.ticker.remove(tick)
-    }
-  }, [])
-
   return (
-    <div ref={overlayRef} className="ras-loader" aria-hidden="true" role="presentation">
-      <div className="ras-loader-noise" />
-      <div className="ras-loader-glow" />
+    <div ref={overlayRef} className="loader-overlay" aria-hidden="true" role="presentation">
+      {/* Film grain texture */}
+      <div className="loader-noise" />
 
-      <div ref={logoRef} className="ras-loader-logo" style={{ transformStyle: 'preserve-3d' }}>
-        <Image
-          src="/ras-logo.svg"
-          alt="RAS Media"
-          width={192}
-          height={192}
-          priority
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-        />
-      </div>
+      {/* Ambient glow behind capsule */}
+      <div className="loader-ambient-glow" />
 
-      <div className="ras-loader-progress-meta" aria-hidden="true">
-        <span>Loading</span>
-        <span ref={progressLabelRef}>0%</span>
-      </div>
+      {/* Bottom-left capsule loading bar */}
+      <div className="loader-capsule-area">
+        <div ref={capsuleRef} className="loader-capsule">
+          {/* Track fill */}
+          <div ref={fillRef} className="loader-capsule-fill" />
 
-      <div className="ras-loader-progress-track">
-        <div ref={progressFillRef} className="ras-loader-progress-fill" />
+          {/* Inner capsule glow */}
+          <div className="loader-capsule-glow" />
+
+          {/* Floor reflection */}
+          <div className="loader-capsule-reflection" />
+
+          {/* Logo indicator sliding inside the capsule */}
+          <div ref={logoRef} className="loader-logo-indicator">
+            <Image
+              src="/ras-logo.svg"
+              alt="RAS Media"
+              width={64}
+              height={64}
+              priority
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+          </div>
+
+          {/* Tagline text along the capsule */}
+          <span ref={taglineRef} className="loader-tagline">
+            INFLUENCER MARKETING AGENCY
+          </span>
+
+          {/* Percentage readout */}
+          <span ref={percentRef} className="loader-percent">
+            0%
+          </span>
+        </div>
       </div>
     </div>
   )
