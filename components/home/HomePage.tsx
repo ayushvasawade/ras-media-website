@@ -9,6 +9,8 @@ import Hero13 from '@/components/originkit/hero-13'
 import BrandStatement from '@/components/sections/BrandStatement'
 import ServicesShowcase from '@/components/sections/ServicesShowcase'
 import CreatorNetwork from '@/components/sections/CreatorNetwork'
+import ClosingStatement from '@/components/sections/ClosingStatement'
+import FinalFooter from '@/components/sections/FinalFooter'
 
 // Dynamically import Loader so it never renders on the server
 const Loader = dynamic(() => import('@/components/ui/Loader'), { ssr: false })
@@ -387,6 +389,12 @@ export default function HomePage() {
 
         {/* Section 4: Creator Network */}
         <CreatorNetwork />
+
+        {/* Section 5: Closing Statement */}
+        <ClosingStatement />
+
+        {/* Final Section: Footer */}
+        <FinalFooter />
       </main>
     </>
   )
