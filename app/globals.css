@@ -587,6 +587,84 @@ body {
   }
 }
 
+/* ── MOBILE (Below 768px) — Section 2 ───────────────────────── */
+@media (max-width: 767px) {
+  .section-two {
+    min-height: 100svh;
+    overflow-y: auto;
+  }
+
+  .section-two__container {
+    width: 100%;
+    padding-inline: 1.5rem;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .section-two__content {
+    width: 100%;
+    max-width: 100%;
+    padding-block: 5rem 3rem;
+  }
+
+  .section-two .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .section-two .eyebrow-line {
+    width: 1.75rem;
+  }
+
+  .section-two h2 {
+    font-size: clamp(2.8rem, 13vw, 5rem);
+    line-height: 0.85;
+    max-width: 100%;
+    letter-spacing: -0.04em;
+  }
+
+  .section-two p {
+    font-size: clamp(0.92rem, 3.8vw, 1.1rem);
+    margin-top: 1.5rem;
+    max-width: 100%;
+    line-height: 1.6;
+  }
+
+  .section-two .categories {
+    gap: 0.5rem;
+    margin-top: 2rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+  }
+
+  .section-two__logo {
+    width: 150px;
+    height: 150px;
+    opacity: 0.7;
+  }
+}
+
+/* ── SMALL MOBILE (Below 380px) — Section 2 fine-tune ────────── */
+@media (max-width: 379px) {
+  .section-two h2 {
+    font-size: clamp(2.4rem, 14vw, 3.5rem);
+  }
+
+  .section-two .categories {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .section-two .categories span.dash {
+    display: none;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────
    SECTION 3 — SERVICES SHOWCASE (Cotton Theme)
    ─────────────────────────────────────────────────────────────── */
@@ -617,6 +695,13 @@ body {
   height: 250vh;
   width: 100%;
   pointer-events: none;
+}
+
+/* ── Mobile: shorten zoom scroll distance for touch ──────────── */
+@media (max-width: 767px) {
+  .section-2-3-scroll-spacer {
+    height: 180vh;
+  }
 }
 
 /* ── Disable CSS transitions during GSAP scrub ───────────────── */

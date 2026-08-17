@@ -11,25 +11,57 @@ export default function BrandStatement() {
 
   const [isRevealed, setIsRevealed] = useState(false)
 
-  /* ── Reveal Observer ─────────────────────────────────────────── */
+  /* ── Reveal Observer (with fallback for fixed/hidden elements) ── */
   useEffect(() => {
     const section = sectionRef.current
     if (!section) return
- 
+
+    let disposed = false
+
+    const triggerReveal = () => {
+      if (!disposed) {
+        disposed = true
+        setIsRevealed(true)
+        observer?.disconnect()
+        mutObs?.disconnect()
+        if (pollId) clearInterval(pollId)
+      }
+    }
+
+    // Primary: IntersectionObserver
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsRevealed(true)
-            observer.disconnect()
-          }
+          if (entry.isIntersecting) triggerReveal()
         })
       },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     )
     observer.observe(section)
 
-    return () => observer.disconnect()
+    // Fallback 1: MutationObserver — detect when handleExplore sets display:flex
+    const mutObs = new MutationObserver(() => {
+      const style = window.getComputedStyle(section)
+      if (style.display !== 'none' && parseFloat(style.opacity) > 0.05) {
+        triggerReveal()
+      }
+    })
+    mutObs.observe(section, { attributes: true, attributeFilter: ['style', 'class'] })
+
+    // Fallback 2: Polling check (covers edge cases on mobile)
+    const pollId = setInterval(() => {
+      const style = window.getComputedStyle(section)
+      if (style.display !== 'none' && parseFloat(style.opacity) > 0.05) {
+        triggerReveal()
+      }
+    }, 500)
+
+    return () => {
+      disposed = true
+      observer.disconnect()
+      mutObs.disconnect()
+      clearInterval(pollId)
+    }
   }, [])
 
   /* ── GSAP Text Entrance Animation Sequence ─────────────────────── */

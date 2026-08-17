@@ -89,8 +89,13 @@ export default function HomePage() {
 
     // Responsive transform-origin: on mobile, zoom center rather than right
     const isMobile = window.innerWidth < 768
-    const originX = isMobile ? '55%' : '75%'
-    const transformOrigin = `${originX} 50%`
+    const originX = isMobile ? '50%' : '75%'
+    const originY = isMobile ? '45%' : '50%'
+    const transformOrigin = `${originX} ${originY}`
+
+    // Mobile-tuned values: lower zoom, faster scrub for touch
+    const zoomScale = isMobile ? 5 : 8
+    const scrubLag = isMobile ? 1.0 : 1.5
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
@@ -98,7 +103,7 @@ export default function HomePage() {
           trigger: scrollSpacer,
           start: 'top bottom',   // spacer top = viewport bottom → scrollY ≈ 0
           end: 'bottom bottom',  // spacer bottom = viewport bottom → scrollY = spacer height
-          scrub: 1.5,            // smooth interpolation (1.5s lag)
+          scrub: scrubLag,       // smooth interpolation (mobile: snappier)
           onUpdate: (self) => {
             const p = self.progress
             const active = p > 0.001
@@ -122,45 +127,46 @@ export default function HomePage() {
         },
       })
 
-      /* ─── Phase 1: Forward Zoom into Right Side (0% → 100%) ───── */
+      /* ─── Phase 1: Forward Zoom (0% → 100%) ─────────────────── */
       tl.fromTo(
         section2,
         { scale: 1, transformOrigin },
         {
-          scale: 8,
+          scale: zoomScale,
           duration: 1,
           ease: 'power2.in',
         },
         0
       )
 
-      /* ─── Phase 2: Left Content Drifts & Blurs (0% → 40%) ────── */
+      /* ─── Phase 2: Content Drifts & Blurs (0% → 40%) ────────── */
       if (leftContent) {
         tl.fromTo(
           leftContent,
-          { x: '0%', opacity: 1, filter: 'blur(0px)' },
+          { x: '0%', y: '0%', opacity: 1, filter: 'blur(0px)' },
           {
-            x: '-20%',
+            x: isMobile ? '0%' : '-20%',
+            y: isMobile ? '-12%' : '0%',
             opacity: 0,
-            filter: 'blur(12px)',
-            duration: 0.4,
+            filter: isMobile ? 'blur(8px)' : 'blur(12px)',
+            duration: isMobile ? 0.3 : 0.4,
             ease: 'power1.in',
           },
           0
         )
       }
 
-      /* ─── Phase 3: Logo Layer Fades (25% → 55%) ───────────────── */
+      /* ─── Phase 3: Logo Layer Fades (mobile: earlier) ────────── */
       if (logoLayer) {
         tl.fromTo(
           logoLayer,
           { opacity: 1 },
           {
             opacity: 0,
-            duration: 0.3,
+            duration: isMobile ? 0.25 : 0.3,
             ease: 'power1.in',
           },
-          0.25
+          isMobile ? 0.15 : 0.25
         )
       }
 
@@ -173,29 +179,30 @@ export default function HomePage() {
           duration: 0.3,
           ease: 'none',
         },
-        0.55
+        isMobile ? 0.45 : 0.55
       )
 
       /* ─── Phase 5: Section 3 Reveals Behind (40% → 95%) ──────── */
       tl.fromTo(
         section3,
-        { autoAlpha: 0, scale: 1.06 },
+        { autoAlpha: 0, scale: isMobile ? 1.03 : 1.06 },
         {
           autoAlpha: 1,
           scale: 1,
           duration: 0.55,
           ease: 'power2.out',
         },
-        0.4
+        isMobile ? 0.35 : 0.4
       )
     })
 
     // Recalculate on resize (responsive origin)
     const handleResize = () => {
       const nowMobile = window.innerWidth < 768
-      const newOriginX = nowMobile ? '55%' : '75%'
+      const newOriginX = nowMobile ? '50%' : '75%'
+      const newOriginY = nowMobile ? '45%' : '50%'
       if (section2) {
-        gsap.set(section2, { transformOrigin: `${newOriginX} 50%` })
+        gsap.set(section2, { transformOrigin: `${newOriginX} ${newOriginY}` })
       }
     }
     window.addEventListener('resize', handleResize)
