@@ -170,7 +170,7 @@ export default function HomePage() {
         )
       }
 
-      /* ─── Phase 4: Section 2 Fades to Transparent (40%–70% mobile, 55%–85% desktop) ── */
+      /* ─── Phase 4: Section 2 Fades to Transparent (55% → 85%) ── */
       tl.fromTo(
         section2,
         { autoAlpha: 1 },
@@ -179,20 +179,20 @@ export default function HomePage() {
           duration: 0.3,
           ease: 'none',
         },
-        isMobile ? 0.40 : 0.55
+        isMobile ? 0.45 : 0.55
       )
 
-      /* ─── Phase 5: Section 3 Reveals Behind (55%–95% mobile, 40%–95% desktop) ──────── */
+      /* ─── Phase 5: Section 3 Reveals Behind (40% → 95%) ──────── */
       tl.fromTo(
         section3,
         { autoAlpha: 0, scale: isMobile ? 1.03 : 1.06 },
         {
           autoAlpha: 1,
           scale: 1,
-          duration: isMobile ? 0.45 : 0.55,
+          duration: 0.55,
           ease: 'power2.out',
         },
-        isMobile ? 0.55 : 0.4
+        isMobile ? 0.35 : 0.4
       )
     })
 

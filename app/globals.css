@@ -592,7 +592,6 @@ body {
   .section-two {
     min-height: 100svh;
     overflow-y: auto;
-    overflow-x: hidden;
   }
 
   .section-two__container {
@@ -607,7 +606,7 @@ body {
   .section-two__content {
     width: 100%;
     max-width: 100%;
-    padding-block: 4.5rem 2rem;
+    padding-block: 5rem 3rem;
   }
 
   .section-two .eyebrow {
@@ -622,7 +621,7 @@ body {
   }
 
   .section-two h2 {
-    font-size: clamp(2.5rem, 12vw, 4.5rem);
+    font-size: clamp(2.8rem, 13vw, 5rem);
     line-height: 0.85;
     max-width: 100%;
     letter-spacing: -0.04em;
@@ -630,21 +629,21 @@ body {
 
   .section-two p {
     font-size: clamp(0.92rem, 3.8vw, 1.1rem);
-    margin-top: 1.25rem;
+    margin-top: 1.5rem;
     max-width: 100%;
     line-height: 1.6;
   }
 
   .section-two .categories {
     gap: 0.5rem;
-    margin-top: 1.5rem;
+    margin-top: 2rem;
     font-size: 0.68rem;
     letter-spacing: 0.18em;
   }
 
   .section-two__logo {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     opacity: 0.7;
   }
 }
@@ -652,7 +651,7 @@ body {
 /* ── SMALL MOBILE (Below 380px) — Section 2 fine-tune ────────── */
 @media (max-width: 379px) {
   .section-two h2 {
-    font-size: clamp(2.2rem, 13vw, 3.2rem);
+    font-size: clamp(2.4rem, 14vw, 3.5rem);
   }
 
   .section-two .categories {
@@ -663,30 +662,6 @@ body {
 
   .section-two .categories span.dash {
     display: none;
-  }
-}
-
-/* ── SHORT MOBILE VIEWPORT — Section 2 vertical squeeze ─────── */
-@media (max-width: 767px) and (max-height: 680px) {
-  .section-two__content {
-    padding-block: 4rem 1.5rem;
-  }
-
-  .section-two .eyebrow {
-    margin-bottom: 1rem;
-  }
-
-  .section-two h2 {
-    font-size: clamp(2.2rem, 11vw, 3.8rem);
-  }
-
-  .section-two p {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-  }
-
-  .section-two .categories {
-    margin-top: 1.25rem;
   }
 }
 
@@ -722,10 +697,10 @@ body {
   pointer-events: none;
 }
 
-/* ── Mobile: adjust zoom scroll distance for touch ───────────── */
+/* ── Mobile: shorten zoom scroll distance for touch ──────────── */
 @media (max-width: 767px) {
   .section-2-3-scroll-spacer {
-    height: 220vh;
+    height: 180vh;
   }
 }
 
