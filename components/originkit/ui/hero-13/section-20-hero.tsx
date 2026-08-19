@@ -188,6 +188,8 @@ export const Section20Hero = () => {
           ease: "power2.out",
           onComplete: () => {
             overlay?.remove();
+            document.body.style.overflow = "";
+            ScrollTrigger.refresh();
           },
         });
       },

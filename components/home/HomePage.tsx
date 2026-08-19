@@ -87,15 +87,17 @@ export default function HomePage() {
 
     if (!section2 || !section3 || !scrollSpacer) return
 
-    // Responsive transform-origin: on mobile, zoom center rather than right
+    // Responsive transform-origin and parameters
     const isMobile = window.innerWidth < 768
-    const originX = isMobile ? '50%' : '75%'
-    const originY = isMobile ? '45%' : '50%'
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024
+
+    const originX = isMobile ? '50%' : isTablet ? '70%' : '75%'
+    const originY = isMobile ? '45%' : isTablet ? '50%' : '50%'
     const transformOrigin = `${originX} ${originY}`
 
-    // Mobile-tuned values: lower zoom, faster scrub for touch
-    const zoomScale = isMobile ? 5 : 8
-    const scrubLag = isMobile ? 1.0 : 1.5
+    // Device-tuned values:
+    const zoomScale = isMobile ? 5 : isTablet ? 6.5 : 8
+    const scrubLag = isMobile ? 0.8 : isTablet ? 1.2 : 1.5
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
@@ -103,7 +105,7 @@ export default function HomePage() {
           trigger: scrollSpacer,
           start: 'top bottom',   // spacer top = viewport bottom → scrollY ≈ 0
           end: 'bottom bottom',  // spacer bottom = viewport bottom → scrollY = spacer height
-          scrub: scrubLag,       // smooth interpolation (mobile: snappier)
+          scrub: scrubLag,       // smooth interpolation (mobile: fast & responsive touch tracking)
           onUpdate: (self) => {
             const p = self.progress
             const active = p > 0.001
@@ -112,12 +114,11 @@ export default function HomePage() {
             section2.classList.toggle('is-scrubbing', active)
             section3.classList.toggle('is-scrubbing', active)
 
-            // Toggle pointer events: Section 3 interactive only when mostly visible
+            // Toggle pointer events: Section 3 interactive only when settled
             if (p > 0.85) {
               section2.style.pointerEvents = 'none'
               section3.style.pointerEvents = 'auto'
             } else {
-              // Only restore if Section 2 is actually visible (Explore has run)
               if (section2.style.display === 'flex') {
                 section2.style.pointerEvents = 'auto'
               }
@@ -139,68 +140,69 @@ export default function HomePage() {
         0
       )
 
-      /* ─── Phase 2: Content Drifts & Blurs (0% → 40%) ────────── */
+      /* ─── Phase 2: Content Drifts & Blurs (0% → 35% mob / 40% desk) ────────── */
       if (leftContent) {
         tl.fromTo(
           leftContent,
           { x: '0%', y: '0%', opacity: 1, filter: 'blur(0px)' },
           {
-            x: isMobile ? '0%' : '-20%',
-            y: isMobile ? '-12%' : '0%',
+            x: isMobile ? '0%' : isTablet ? '-12%' : '-20%',
+            y: isMobile ? '-10%' : isTablet ? '-6%' : '0%',
             opacity: 0,
-            filter: isMobile ? 'blur(8px)' : 'blur(12px)',
-            duration: isMobile ? 0.3 : 0.4,
+            filter: isMobile ? 'blur(10px)' : isTablet ? 'blur(10px)' : 'blur(12px)',
+            duration: isMobile ? 0.35 : isTablet ? 0.38 : 0.4,
             ease: 'power1.in',
           },
           0
         )
       }
 
-      /* ─── Phase 3: Logo Layer Fades (mobile: earlier) ────────── */
+      /* ─── Phase 3: Logo Layer Fades (mob: 15%→40%, desk: 25%→55%) ────────── */
       if (logoLayer) {
         tl.fromTo(
           logoLayer,
           { opacity: 1 },
           {
             opacity: 0,
-            duration: isMobile ? 0.25 : 0.3,
+            duration: isMobile ? 0.25 : isTablet ? 0.25 : 0.3,
             ease: 'power1.in',
           },
-          isMobile ? 0.15 : 0.25
+          isMobile ? 0.15 : isTablet ? 0.2 : 0.25
         )
       }
 
-      /* ─── Phase 4: Section 2 Fades to Transparent (55% → 85%) ── */
+      /* ─── Phase 4: Section 2 Background Fade (mob: 38%→70%, desk: 55%→85%) ── */
       tl.fromTo(
         section2,
         { autoAlpha: 1 },
         {
           autoAlpha: 0,
-          duration: 0.3,
+          duration: isMobile ? 0.32 : isTablet ? 0.3 : 0.3,
           ease: 'none',
         },
-        isMobile ? 0.45 : 0.55
+        isMobile ? 0.38 : isTablet ? 0.45 : 0.55
       )
 
-      /* ─── Phase 5: Section 3 Reveals Behind (40% → 95%) ──────── */
+      /* ─── Phase 5: Section 3 Reveals Behind (mob: 50%→95%, desk: 40%→95%) ──── */
       tl.fromTo(
         section3,
-        { autoAlpha: 0, scale: isMobile ? 1.03 : 1.06 },
+        { autoAlpha: 0, scale: isMobile ? 1.03 : isTablet ? 1.04 : 1.06 },
         {
           autoAlpha: 1,
           scale: 1,
-          duration: 0.55,
+          duration: isMobile ? 0.45 : isTablet ? 0.47 : 0.55,
           ease: 'power2.out',
         },
-        isMobile ? 0.35 : 0.4
+        isMobile ? 0.5 : isTablet ? 0.48 : 0.4
       )
     })
 
     // Recalculate on resize (responsive origin)
     const handleResize = () => {
       const nowMobile = window.innerWidth < 768
-      const newOriginX = nowMobile ? '50%' : '75%'
-      const newOriginY = nowMobile ? '45%' : '50%'
+      const nowTablet = window.innerWidth >= 768 && window.innerWidth < 1024
+      const newOriginX = nowMobile ? '50%' : nowTablet ? '70%' : '75%'
+      const newOriginY = nowMobile ? '45%' : nowTablet ? '50%' : '50%'
       if (section2) {
         gsap.set(section2, { transformOrigin: `${newOriginX} ${newOriginY}` })
       }
