@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 const NAV_LINKS = [
-  { label: 'Work', href: '#campaigns' },
-  { label: 'Services', href: '#services' },
-  { label: 'About', href: '#about' },
+  { label: 'Work', href: '/work' },
+  { label: 'Services', href: '/services' },
+  { label: 'About', href: '/about' },
 ]
 
 export default function Navigation() {
   const navRef = useRef<HTMLElement>(null)
+  const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isCottonTheme, setIsCottonTheme] = useState(false)
 
+  // Scroll position listener for header backdrop styling
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 60)
@@ -23,8 +27,13 @@ export default function Navigation() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Detect Section 2 & 3 (Cotton Scene) vs Section 4 (Dark Maroon) activation
+  // Detect Section 2 & 3 (Cotton Scene) on the homepage vs dark themes
   useEffect(() => {
+    if (pathname !== '/') {
+      setIsCottonTheme(false)
+      return
+    }
+
     const checkSection = () => {
       const bs = document.getElementById('brand-statement')
       const ss = document.getElementById('services-showcase')
@@ -60,19 +69,47 @@ export default function Navigation() {
 
     const interval = setInterval(checkSection, 100)
     return () => clearInterval(interval)
-  }, [])
+  }, [pathname])
 
   // Lock body scroll when mobile menu open
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [menuOpen])
 
-  const handleNavClick = (href: string) => {
+  // Close mobile menu on route change
+  useEffect(() => {
     setMenuOpen(false)
-    const el = document.querySelector(href)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
+  }, [pathname])
+
+  const handleOpenCampaignModal = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setMenuOpen(false)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ras:open-campaign-modal'))
+    }
+  }
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (pathname === '/') {
+      e.preventDefault()
+      setMenuOpen(false)
+      if (typeof window !== 'undefined') {
+        const bs = document.getElementById('brand-statement')
+        if (bs && bs.style.display === 'flex') {
+          window.dispatchEvent(new CustomEvent('ras:reverse-hero-zoom'))
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      }
+    } else {
+      setMenuOpen(false)
     }
   }
 
@@ -85,16 +122,11 @@ export default function Navigation() {
         aria-label="Main navigation"
       >
         {/* Logo */}
-        <a
-          href="#"
+        <Link
+          href="/"
           className="nav-logo"
           aria-label="RAS Media — Home"
-          onClick={(e) => {
-            e.preventDefault();
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('ras:reverse-hero-zoom'));
-            }
-          }}
+          onClick={handleLogoClick}
         >
           <Image
             src="/ras-logo.svg"
@@ -105,35 +137,35 @@ export default function Navigation() {
             priority
           />
           <span className="nav-logo-text">RAS MEDIA</span>
-        </a>
+        </Link>
 
         {/* Desktop links */}
         <ul className="nav-links" role="list">
           {NAV_LINKS.map((link) => (
             <li key={link.label}>
-              <a
+              <Link
                 href={link.href}
-                className="nav-link"
-                onClick={(e) => { e.preventDefault(); handleNavClick(link.href) }}
+                className={`nav-link ${pathname === link.href ? 'active' : ''}`}
               >
                 {link.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
 
         {/* Desktop CTA */}
-        <a
-          href="#contact"
+        <button
+          type="button"
           className="nav-cta"
-          onClick={(e) => { e.preventDefault(); handleNavClick('#contact') }}
+          onClick={handleOpenCampaignModal}
           aria-label="Start a Campaign with RAS Media"
         >
           Start a Campaign
-        </a>
+        </button>
 
         {/* Mobile hamburger */}
         <button
+          type="button"
           className={`nav-hamburger ${menuOpen ? 'open' : ''}`}
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -153,32 +185,52 @@ export default function Navigation() {
         <ul className="mobile-nav-links" role="list">
           {NAV_LINKS.map((link, i) => (
             <li key={link.label} style={{ transitionDelay: `${i * 60}ms` }}>
-              <a
+              <Link
                 href={link.href}
-                className="mobile-nav-link"
-                onClick={(e) => { e.preventDefault(); handleNavClick(link.href) }}
+                className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
+                onClick={() => setMenuOpen(false)}
                 tabIndex={menuOpen ? 0 : -1}
               >
                 {link.label}
-              </a>
+              </Link>
             </li>
           ))}
+
+          {/* Prominent Mobile CTA */}
+          <li style={{ transitionDelay: `${NAV_LINKS.length * 60}ms` }}>
+            <button
+              type="button"
+              className="mobile-nav-cta"
+              onClick={handleOpenCampaignModal}
+              tabIndex={menuOpen ? 0 : -1}
+            >
+              <span>START A CAMPAIGN</span>
+              <span className="arrow">→</span>
+            </button>
+          </li>
         </ul>
 
-        {/* Decorative number */}
+        {/* Decorative footer in mobile menu */}
         <div
           style={{
             position: 'absolute',
             bottom: '3rem',
+            left: 'var(--section-pad-x)',
             right: 'var(--section-pad-x)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             fontFamily: 'var(--font-display)',
             fontSize: '0.72rem',
-            letterSpacing: '0.2em',
+            letterSpacing: '0.15em',
             color: 'var(--ras-white-mute)',
+            borderTop: '1px solid rgba(237, 235, 221, 0.08)',
+            paddingTop: '1.25rem',
           }}
           aria-hidden="true"
         >
-          RAS MEDIA © {new Date().getFullYear()}
+          <span>RAS MEDIA AGENCY</span>
+          <span>© {new Date().getFullYear()}</span>
         </div>
       </div>
     </>

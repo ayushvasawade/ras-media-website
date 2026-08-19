@@ -184,14 +184,19 @@ export default function FinalFooter() {
           </p>
 
           <div className="ff-cta-wrap final-footer__cta-wrap">
-            <a
-              href="mailto:hello@rasmedia.com"
+            <button
+              type="button"
               className="final-footer__cta"
-              aria-label="Give us some work — Contact RAS Media"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ras:open-campaign-modal'))
+                }
+              }}
+              aria-label="Give us some work — Open Campaign Inquiry Form"
             >
               <span className="cta-text">GIVE US SOME WORK</span>
               <span className="cta-arrow" aria-hidden="true">→</span>
-            </a>
+            </button>
           </div>
         </div>
 

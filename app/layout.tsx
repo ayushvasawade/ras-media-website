@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Navigation from '@/components/ui/Navigation'
 import CustomCursor from '@/components/ui/CustomCursor'
+import CampaignModal from '@/components/ui/CampaignModal'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://rasmedia.agency'),
@@ -70,6 +71,7 @@ export default function RootLayout({
 
         <CustomCursor />
         <Navigation />
+        <CampaignModal />
         {children}
       </body>
     </html>
