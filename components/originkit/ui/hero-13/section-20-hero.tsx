@@ -90,6 +90,8 @@ export const Section20Hero = () => {
     }
 
     if (section) {
+      section.style.visibility = "visible";
+      section.style.pointerEvents = "auto";
       gsap.set(section, {
         scale: 18,
         transformOrigin: `${cpX}% ${cpY}%`,
@@ -189,6 +191,13 @@ export const Section20Hero = () => {
           onComplete: () => {
             overlay?.remove();
             document.body.style.overflow = "";
+            // Hide the hero section and reset its scale so it doesn't cause
+            // excessive page width, touch blocking, or the black ALK layer
+            if (section) {
+              section.style.visibility = "hidden";
+              section.style.pointerEvents = "none";
+              gsap.set(section, { scale: 1, clearProps: "transform" });
+            }
             ScrollTrigger.refresh();
           },
         });

@@ -451,7 +451,14 @@ body {
 }
 
 @media (max-width: 768px) {
-  :root { --section-pad-x: 1.5rem; }
+  :root { --section-pad-x: 1.25rem; }
+  .nav-root {
+    padding-left: max(env(safe-area-inset-left, 0px) + 1.25rem, 1.25rem);
+    padding-right: max(env(safe-area-inset-right, 0px) + 1.25rem, 1.25rem);
+    padding-top: env(safe-area-inset-top, 0px);
+    width: 100%;
+    box-sizing: border-box;
+  }
   .nav-links, .nav-cta { display: none; }
   .nav-hamburger { display: flex; }
 }
@@ -619,8 +626,8 @@ body {
   .section-two {
     min-height: 100svh;
     height: 100svh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
+    touch-action: pan-y;
   }
 
   .section-two__container {
@@ -771,6 +778,7 @@ body {
   min-height: 100svh;
   width: 100%;
   overflow-x: hidden;
+  touch-action: pan-y;
   background-color: #edebdd; /* Seamless Cotton Background */
   color: #080808;
   display: flex;
