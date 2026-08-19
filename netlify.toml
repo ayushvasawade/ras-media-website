@@ -6,6 +6,20 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
+[functions]
+  directory = "netlify/functions"
+
+# Netlify Functions API Routes
+[[redirects]]
+  from = "/api/campaign"
+  to = "/.netlify/functions/campaign"
+  status = 200
+
+[[redirects]]
+  from = "/api/campaign/export"
+  to = "/.netlify/functions/export"
+  status = 200
+
 # SPA-style redirects — serve index for all routes
 [[redirects]]
   from = "/*"

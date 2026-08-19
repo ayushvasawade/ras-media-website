@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server'
+import { persistLead, LeadRecord } from '@/lib/leads-storage'
 
-export interface CampaignInquiryPayload {
-  fullName: string
-  companyName: string
-  workEmail: string
-  need: string
-  brief: string
-  phone?: string
-  campaignName?: string
-  budget?: string
-  timeline?: string
-  website?: string
-  message?: string
-}
+export interface CampaignInquiryPayload extends LeadRecord {}
 
 export async function POST(request: Request) {
   try {
@@ -49,10 +38,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Log the inquiry for server-side persistence / webhook forwarding
-    console.log('[RAS Media Campaign Inquiry Received]:', {
-      timestamp: new Date().toISOString(),
-      ...body,
+    // Persist lead to C:\RAS_MEDIA\data\campaign_leads.csv, project data store, and Netlify Blobs
+    const persistenceResult = await persistLead(body)
+
+    console.log('[RAS Media Lead Saved]:', {
+      timestamp: persistenceResult.timestamp,
+      fullName: body.fullName,
+      company: body.companyName,
+      email: body.workEmail,
+      storedLocally: persistenceResult.storedLocally,
+      storedInNetlifyBlob: persistenceResult.storedInNetlifyBlob,
     })
 
     return NextResponse.json({

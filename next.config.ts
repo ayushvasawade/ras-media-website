@@ -1,8 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Static export for Netlify deployment
-  output: 'export',
+  // Required for next/image with Netlify deployment
 
   // Required for next/image with static export
   images: {
