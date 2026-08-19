@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private Lead Data & CSVs (never push to GitHub)
+/data/
+*.csv
+campaign_leads.csv
+
