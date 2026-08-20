@@ -3,6 +3,7 @@ import './globals.css'
 import Navigation from '@/components/ui/Navigation'
 import CustomCursor from '@/components/ui/CustomCursor'
 import CampaignModal from '@/components/ui/CampaignModal'
+import SmoothScroll from '@/components/ui/SmoothScroll'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://rasmedia.agency'),
@@ -70,6 +71,7 @@ export default function RootLayout({
         </a>
 
         <CustomCursor />
+        <SmoothScroll />
         <Navigation />
         <CampaignModal />
         {children}

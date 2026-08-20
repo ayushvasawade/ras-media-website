@@ -2,8 +2,11 @@
 
 import { useEffect } from "react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import GalleryTunnel from "@/components/originkit/ui/hero-13/gallery-tunnel";
 import { HeroContent } from "@/components/originkit/ui/hero-13/hero-content";
+
+gsap.registerPlugin(ScrollTrigger);
 
 /** Public asset under /sections/hero-13/assets */
 function asset(file: string) {

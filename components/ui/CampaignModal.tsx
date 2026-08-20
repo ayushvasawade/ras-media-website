@@ -193,11 +193,12 @@ export default function CampaignModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="campaign-modal-title"
+      data-lenis-prevent
       onClick={(e) => {
         if (e.target === e.currentTarget) setIsOpen(false)
       }}
     >
-      <div ref={modalRef} className="campaign-modal-card">
+      <div ref={modalRef} className="campaign-modal-card" data-lenis-prevent>
         {/* Header with Title and Close Button */}
         <div className="campaign-modal-header">
           <div>

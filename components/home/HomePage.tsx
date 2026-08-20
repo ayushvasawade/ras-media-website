@@ -35,48 +35,6 @@ export default function HomePage() {
     }
   }, [loaderDone])
 
-  useEffect(() => {
-    // Lenis smooth scroll integration with GSAP ScrollTrigger
-    let lenis: { raf: (time: number) => void; destroy: () => void } | null = null
-    let tick: ((time: number) => void) | null = null
-
-    const initLenis = async () => {
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (reducedMotion) return
-
-      const { default: Lenis } = await import('lenis')
-
-      const lenisInstance = new Lenis({
-        duration: 1.2,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-      })
-
-      lenis = lenisInstance
-
-      // Sync Lenis with GSAP ScrollTrigger
-      lenisInstance.on('scroll', ScrollTrigger.update)
-
-      tick = (time: number) => {
-        lenisInstance.raf(time * 1000)
-      }
-      gsap.ticker.add(tick)
-
-      gsap.ticker.lagSmoothing(0)
-    }
-
-    initLenis()
-
-    return () => {
-      if (lenis) {
-        lenis.destroy()
-      }
-      if (tick) {
-        gsap.ticker.remove(tick)
-      }
-    }
-  }, [])
-
   /* ── Section 2 → Section 3 Zoom-Through Transition ────────────── */
   useEffect(() => {
     const section2 = document.getElementById('brand-statement')
