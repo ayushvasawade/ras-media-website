@@ -1,9 +1,9 @@
 [build]
   command = "npm run build"
-  publish = "out"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   NPM_FLAGS = "--legacy-peer-deps"
 
 [functions]
@@ -18,12 +18,6 @@
 [[redirects]]
   from = "/api/campaign/export"
   to = "/.netlify/functions/export"
-  status = 200
-
-# SPA-style redirects — serve index for all routes
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
   status = 200
 
 # Security headers
