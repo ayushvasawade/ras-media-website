@@ -185,9 +185,10 @@ export default function HomePage() {
 
     if (!section3 || !section4 || !scrollSpacer34 || !sharedVisualWrap) return
 
-    const isMobile = window.innerWidth < 768
+    const mm = gsap.matchMedia()
 
-    const ctx = gsap.context(() => {
+    // ── DESKTOP (≥ 768px): Glides horizontally from right to left into poster ──
+    mm.add('(min-width: 768px)', () => {
       const tl34 = gsap.timeline({
         scrollTrigger: {
           trigger: scrollSpacer34,
@@ -212,7 +213,7 @@ export default function HomePage() {
         },
       })
 
-      // 1. Cinematic Background Color Transition: Cotton (#edebdd) → Cherry Tint → Maroon → Deep Maroon (#3D0507)
+      // 1. Cinematic Background Color Transition: Cotton (#edebdd) → Maroon (#3D0507)
       tl34.to(
         section3,
         {
@@ -249,43 +250,28 @@ export default function HomePage() {
         )
       }
 
-      // 3. Shared Visual Component Transformation:
-      // Glides from right side further to the left in a flat horizontal line, expanding in scale
-      if (!isMobile) {
-        tl34.to(
-          sharedVisualWrap,
-          {
-            x: '-64vw',
-            y: 0,
-            yPercent: 0,
-            scale: 1.05,
-            duration: 0.8,
-            ease: 'power2.inOut',
-          },
-          0.1
-        )
+      // 3. Visual moves horizontally right to left on desktop
+      tl34.to(
+        sharedVisualWrap,
+        {
+          x: '-64vw',
+          y: 0,
+          yPercent: 0,
+          scale: 1.05,
+          duration: 0.8,
+          ease: 'power2.inOut',
+        },
+        0.1
+      )
 
-        if (sharedVisualCard) {
-          tl34.to(
-            sharedVisualCard,
-            {
-              rotateX: 0,
-              rotateY: 0,
-              y: 0,
-              boxShadow: '0 35px 70px -15px rgba(0,0,0,0.6), 0 0 0 2px #C1272D',
-              duration: 0.8,
-              ease: 'power2.inOut',
-            },
-            0.1
-          )
-        }
-      } else {
+      if (sharedVisualCard) {
         tl34.to(
-          sharedVisualWrap,
+          sharedVisualCard,
           {
-            y: '-20vh',
-            scale: 0.9,
-            autoAlpha: 0.3,
+            rotateX: 0,
+            rotateY: 0,
+            y: 0,
+            boxShadow: '0 35px 70px -15px rgba(0,0,0,0.6), 0 0 0 2px #C1272D',
             duration: 0.8,
             ease: 'power2.inOut',
           },
@@ -293,7 +279,7 @@ export default function HomePage() {
         )
       }
 
-      // 4. Section 4 Poster Artwork Entrance: begins at 0.45 when Section 3 text is completely hidden
+      // 4. Section 4 Poster Artwork Entrance
       tl34.fromTo(
         section4,
         { autoAlpha: 0 },
@@ -322,7 +308,113 @@ export default function HomePage() {
       }
     })
 
-    return () => ctx.revert()
+    // ── MOBILE (< 768px): Glides strictly UPWARD (x: 0) ──
+    mm.add('(max-width: 767px)', () => {
+      const tl34 = gsap.timeline({
+        scrollTrigger: {
+          trigger: scrollSpacer34,
+          start: 'top bottom',
+          end: 'bottom bottom',
+          scrub: 0.8,
+          onUpdate: (self) => {
+            const p = self.progress
+            if (p > 0.3) {
+              section3.style.pointerEvents = 'none'
+              section4.style.pointerEvents = 'auto'
+              section4.style.visibility = 'visible'
+              section4.style.opacity = '1'
+              section4.style.zIndex = '35'
+            } else {
+              section3.style.pointerEvents = 'auto'
+              section4.style.pointerEvents = 'none'
+              section4.style.opacity = '0'
+              section4.style.visibility = 'hidden'
+            }
+          },
+        },
+      })
+
+      // 1. Cinematic Background Color Transition
+      tl34.to(
+        section3,
+        {
+          backgroundColor: '#3D0507',
+          duration: 1,
+          ease: 'none',
+        },
+        0
+      )
+
+      // 2. Section 3 Content & Pattern exit: slides up
+      if (sec3Content) {
+        tl34.to(
+          sec3Content,
+          {
+            y: -80,
+            autoAlpha: 0,
+            duration: 0.45,
+            ease: 'power1.in',
+          },
+          0
+        )
+      }
+
+      if (sec3PatternBg) {
+        tl34.to(
+          sec3PatternBg,
+          {
+            autoAlpha: 0,
+            duration: 0.45,
+            ease: 'power1.in',
+          },
+          0
+        )
+      }
+
+      // 3. Visual moves strictly UPWARD on mobile (x is locked to 0)
+      tl34.to(
+        sharedVisualWrap,
+        {
+          x: 0,
+          y: '-40vh',
+          scale: 0.92,
+          autoAlpha: 0,
+          duration: 0.65,
+          ease: 'power2.in',
+        },
+        0.05
+      )
+
+      // 4. Section 4 Poster Artwork Entrance
+      tl34.fromTo(
+        section4,
+        { autoAlpha: 0 },
+        {
+          autoAlpha: 1,
+          duration: 0.55,
+          ease: 'power2.out',
+        },
+        0.4
+      )
+
+      const posterWords = section4.querySelectorAll('.poster-word')
+      if (posterWords.length) {
+        tl34.fromTo(
+          posterWords,
+          { autoAlpha: 0, scale: 0.96 },
+          {
+            autoAlpha: 1,
+            scale: 1,
+            stagger: 0.03,
+            duration: 0.5,
+            ease: 'power2.out',
+          },
+          0.42
+        )
+      }
+    })
+
+    return () => mm.revert()
   }, [])
 
   return (
